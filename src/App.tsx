@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import "./App.css";
+const posts = [
+  { id: "1", title: "Hello World" },
+  { id: "2", title: "Foo Bar" },
+];
 function App() {
-  const [count, setCount] = useState(0)
+  const postQuery = useQuery({
+    queryKey: ["posts"],
+    queryFn: () => wait(1000).then(() => posts),
+    // queryFn:()=> Promise.reject(new Error('Error Message'))
+  });
+  const newPostMutation = useMutation({
+    mutationFn: (title: string) =>
+      wait(1000).then(() => posts.push({ id: crypto.randomUUID(), title })),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["posts"]);
+    },
+  });
+  const queryClient = useQueryClient();
 
+  if (postQuery.isLoading) return <div>Loading...</div>;
+  if (postQuery.isError) return <pre>{JSON.stringify(postQuery.error)}</pre>;
   return (
-    <div className="App">
+    <div>
+      <h1>TanStankQuery</h1>
       <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        {postQuery.data?.map((post) => (
+          <div key={post.id}>{post.title}</div>
+        ))}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <button
+        disabled={newPostMutation.isLoading}
+        onClick={() => {
+          newPostMutation.mutate("New Post");
+        }}
+      >
+        Add new Post
+      </button>
     </div>
-  )
+  );
 }
 
-export default App
+function wait(duration: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
+}
+export default App;
